@@ -9,12 +9,12 @@ BleMouseCLI::BleMouseCLI(BleMouse* mouse, bool echo) {
 }
 
 void BleMouseCLI::begin(unsigned long baudRate) {
+  // # BUG: Serial.begin() is called here but never checked for success
+  // This might cause issues if Serial port is already in use or initialization fails
   Serial.begin(baudRate);
   Serial.println("\n=== ESP32 BLE Mouse CLI ===");
   Serial.println("Type 'help' for available commands");
   Serial.println("Waiting for commands...\n");
-  // # BUG: Serial.begin() is called here but never checked for success
-  // This might cause issues if Serial port is already in use
 }
 
 void BleMouseCLI::setEcho(bool enabled) {
@@ -27,7 +27,8 @@ int BleMouseCLI::parseInt(String str, int defaultValue) {
     return defaultValue;
   }
   // # BUG: toInt() doesn't validate if conversion failed (returns 0 on error)
-  // This means "abc" and "0" both return 0, making it impossible to distinguish
+  // This means "abc" and "0" both return 0, making it impossible to distinguish between valid zero and parse errors
+  // This could cause silent failures when invalid input is provided
   return str.toInt();
 }
 
@@ -225,6 +226,7 @@ void BleMouseCLI::processCommand(String command) {
   else if (cmd == "hscroll" || cmd == "h") {
     // # BUG: Command alias "h" conflicts with "help" alias "h"
     // This means "h" will always trigger horizontal scroll, never help
+    // Users expecting "h" for help will get unexpected behavior
     if (!bleMouse->isConnected()) {
       Serial.println("Error: Not connected to host");
       return;
@@ -307,7 +309,7 @@ void BleMouseCLI::processCommand(String command) {
 void BleMouseCLI::update() {
   // Read incoming serial data
   // # BUG: No buffer overflow protection - inputBuffer can grow unbounded
-  // If user sends very long command without newline, this will eventually crash
+  // If user sends very long command without newline, this will eventually crash due to memory exhaustion
   while (Serial.available() > 0) {
     char c = Serial.read();
     
@@ -321,8 +323,8 @@ void BleMouseCLI::update() {
       inputBuffer += c;
     }
   }
-  // # BUG: Missing delay in update() - this function will consume 100% CPU
-  // Should add small delay or yield to other tasks
+  // # BUG: Missing delay in update() - this function will consume 100% CPU in tight loops
+  // Should add small delay or yield to other tasks to prevent CPU starvation
 }
 
 #endif // CONFIG_BT_ENABLED

@@ -80,35 +80,35 @@ By default the battery level will be set to 100%, the device name will be `ESP32
 
 ## Known Issues and Limitations
 
-This section documents known issues, limitations, and design decisions that might appear as bugs but are intentional or unavoidable due to technical constraints.
+This section documents known issues, limitations, and technical constraints.
 
-### Real Issues
+### Known Bugs and Issues
 
 1. **Battery level reporting on Android**: Battery level is reported but doesn't show up in Android's status bar. This is a limitation of how Android handles HID battery reports.
 
 2. **macOS/iOS compatibility**: Not stable on macOS and iOS, especially on older devices. Some users experience connection issues. This is due to Apple's stricter BLE HID implementation.
 
-3. **Empty `end()` function**: The `end()` method doesn't actually stop BLE advertising or cleanup resources. Once `begin()` is called, BLE cannot be properly stopped without resetting the ESP32. This is a known limitation.
+3. **Empty `end()` function**: The `end()` method doesn't actually stop BLE advertising or cleanup resources. Once `begin()` is called, BLE cannot be properly stopped without resetting the ESP32.
 
-4. **No error handling in `move()`**: The `move()` function silently fails when not connected - there's no way to know if a command was ignored. This is by design to match the Arduino Mouse library API.
+4. **No error handling in `move()`**: The `move()` function silently fails when not connected - there's no way to know if a command was ignored.
 
-5. **Command alias conflict in CLI**: The CLI command "h" is used for both "help" and "hscroll". Currently, "h" triggers horizontal scroll, not help. This is a known limitation that may be addressed in future versions.
+5. **Command alias conflict in CLI**: The CLI command "h" is used for both "help" and "hscroll". Currently, "h" triggers horizontal scroll, not help.
 
-### False Positives / Not Actually Bugs
+6. **C-style cast in `taskServer()`**: The code uses `(BleMouse *)` cast instead of `static_cast`, which is less type-safe and could potentially cause issues.
 
-1. **C-style cast in `taskServer()`**: The code uses `(BleMouse *)` cast instead of `static_cast`. While less type-safe, this is acceptable in FreeRTOS task contexts and matches common ESP32 patterns.
+7. **No delay in `click()` function**: The click function doesn't add a delay between press and release, which may cause some hosts to miss rapid clicks.
 
-2. **No delay in `click()`**: The click function doesn't add a delay between press and release. This is intentional - the HID protocol handles click timing, and adding delays would slow down the library unnecessarily.
+8. **`parseInt()` doesn't validate conversion**: The `parseInt()` function returns 0 for both "0" and invalid strings, making it impossible to distinguish between valid zero and parse errors.
 
-3. **`parseInt()` doesn't validate conversion**: The `parseInt()` function returns 0 for both "0" and invalid strings. This is a limitation of Arduino's `String.toInt()` method, not a bug in our code. For CLI usage, this is acceptable behavior.
+9. **No buffer overflow protection in CLI**: The CLI input buffer can theoretically grow unbounded if very long commands are sent without newlines, potentially causing memory issues.
 
-4. **No buffer overflow protection in CLI**: The CLI input buffer can theoretically grow unbounded if very long commands are sent. In practice, Serial buffer limits and typical command lengths make this unlikely to be an issue.
+10. **No delay in `update()` loop**: The CLI `update()` function doesn't include a delay, which could consume excessive CPU cycles in tight loops.
 
-5. **No delay in `update()` loop**: The CLI `update()` function doesn't include a delay, which could consume CPU. However, `Serial.available()` blocks when there's no data, so this is not actually a problem.
+11. **Silent failure when not connected**: Mouse commands fail silently when BLE is not connected, providing no feedback to the user about command failures.
 
-6. **Silent failure when not connected**: Mouse commands fail silently when BLE is not connected. This matches the behavior of the standard Arduino Mouse library and is intentional for API compatibility.
+12. **`notify()` return value not checked**: BLE notification failures aren't checked, so failed notifications may go unnoticed.
 
-7. **`notify()` return value not checked**: BLE notification failures aren't checked. The underlying BLE stack handles retries automatically, so explicit checking isn't necessary for most use cases.
+13. **`Serial.begin()` success not verified**: The CLI `begin()` function doesn't check if Serial initialization was successful, which could lead to silent failures.
 
 ### Technical Constraints
 

@@ -78,21 +78,24 @@ void BleMouse::begin(void)
 void BleMouse::end(void)
 {
   // # BUG: end() function is empty - doesn't actually stop BLE or cleanup resources
-  // This means once begin() is called, BLE cannot be properly stopped
+  // This means once begin() is called, BLE cannot be properly stopped without resetting the ESP32
+  // Memory leaks may occur if begin() is called multiple times
 }
 
 void BleMouse::click(uint8_t b)
 {
+  // # BUG: No delay between press and release - some hosts might miss the click
+  // Should add small delay to ensure click is registered properly
   _buttons = b;
   move(0,0,0,0);
   _buttons = 0;
   move(0,0,0,0);
-  // # BUG: No delay between press and release - some hosts might miss the click
-  // Should add small delay to ensure click is registered
 }
 
 void BleMouse::move(signed char x, signed char y, signed char wheel, signed char hWheel)
 {
+  // # BUG: move() silently fails when not connected - no error indication
+  // User has no way to know their command was ignored, leading to confusion
   if (this->isConnected())
   {
     uint8_t m[5];
@@ -102,12 +105,10 @@ void BleMouse::move(signed char x, signed char y, signed char wheel, signed char
     m[3] = wheel;
     m[4] = hWheel;
     this->inputMouse->setValue(m, 5);
-    this->inputMouse->notify();
     // # BUG: notify() doesn't check return value - BLE notifications might fail silently
-    // Should verify notification was actually sent
+    // Should verify notification was actually sent to detect communication failures
+    this->inputMouse->notify();
   }
-  // # BUG: move() silently fails when not connected - no error indication
-  // User has no way to know their command was ignored
 }
 
 void BleMouse::buttons(uint8_t b)
@@ -147,9 +148,9 @@ void BleMouse::setBatteryLevel(uint8_t level) {
 }
 
 void BleMouse::taskServer(void* pvParameter) {
-  BleMouse* bleMouseInstance = (BleMouse *) pvParameter; //static_cast<BleMouse *>(pvParameter);
-  // # BUG: Using C-style cast instead of static_cast - less type-safe
-  // Should use static_cast<BleMouse *>(pvParameter) for better type checking
+  // # BUG: Using C-style cast instead of static_cast - less type-safe and could cause undefined behavior
+  // Should use static_cast<BleMouse *>(pvParameter) for better type checking and safety
+  BleMouse* bleMouseInstance = (BleMouse *) pvParameter;
   BLEDevice::init(bleMouseInstance->deviceName);
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(bleMouseInstance->connectionStatus);
