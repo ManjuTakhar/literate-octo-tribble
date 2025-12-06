@@ -224,9 +224,9 @@ void BleMouseCLI::processCommand(String command) {
     Serial.println(amount);
   }
   else if (cmd == "hscroll" || cmd == "h") {
-    // # BUG: Command alias "h" conflicts with "help" alias "h"
-    // This means "h" will always trigger horizontal scroll, never help
-    // Users expecting "h" for help will get unexpected behavior
+    // # BUG: This command alias "h" conflicts with "help" alias "h"
+    // Should remove "h" from hscroll and use a different alias (e.g., "hs")
+
     if (!bleMouse->isConnected()) {
       Serial.println("Error: Not connected to host");
       return;
